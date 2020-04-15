@@ -1,6 +1,5 @@
 const conn = require('./dbConnection');
 const bcrypt = require('bcryptjs');
-const config = require('../config/secret');
 const jwt = require('jsonwebtoken');
 const tokenList = {};
 module.exports = {
@@ -42,8 +41,8 @@ module.exports = {
                 return Response.json({msg: 'password not match'});
             }
             if (isMatch) {
-                const token = jwt.sign({usn: user.username}, config.secret, { expiresIn:config.tokenLife});
-                const refreshToken = jwt.sign({usn: user.username}, config.refreshTokenSecret, { expiresIn: config.refreshTokenLife});
+                const token = jwt.sign({usn: user.username}, process.env.SECRET, { expiresIn: JSON.parse(process.env.tokenLife)});
+                const refreshToken = jwt.sign({usn: user.username}, process.env.refreshTokenSECRET, { expiresIn: JSON.parse(process.env.refreshTokenLife)});
                 const response = {
                     "status": "Logged in",
                     "token": token,
@@ -60,7 +59,7 @@ module.exports = {
         const postData = Request.body;
         if ((postData.refreshToken) && (postData.refreshToken in tokenList)) {
             const user = {"usn": postData.username};
-            const token = jwt.sign(user, config.secret, {expiresIn: config.tokenLife});
+            const token = jwt.sign(user, process.env.SECRET, {expiresIn: JSON.parse(process.env.tokenLife)});
             const response = {"token": token,};
             // update the token in the list
             tokenList[postData.refreshToken].token = token;

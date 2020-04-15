@@ -9,7 +9,10 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({
     extended: true
 }));
+require('dotenv').config({
+    path: './config/Config.env'
+})
 require('./routers/loginSystem')(app);
-app.listen(port , () => {
-    console.log('Server run on port :',port);
+app.listen(port, () => {
+    console.log('Server run on port :', port);
 });

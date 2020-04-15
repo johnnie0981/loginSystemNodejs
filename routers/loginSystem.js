@@ -1,7 +1,7 @@
 module.exports = (app) => {
     const loginS = require('../controller/loginSystem');
     const secure = require('../controller/checkToken');
-    
+
     app.route('/signup')
         .post(loginS.Signup);
 
@@ -12,5 +12,5 @@ module.exports = (app) => {
         .post(loginS.Token);
 
     app.route('/secure')
-        .get(secure,loginS.secure);
+        .get(secure, loginS.secure);
 }
