@@ -1,17 +1,25 @@
 const conn = require('./dbConnection');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { check, validationResult } = require('express-validator');
 const tokenList = {};
 module.exports = {
     Signup: async (Request, Response) => {
+        await check('username','fill in Empty').notEmpty().run(Request);
+        await check('password','password must be at least 5 chars long').notEmpty().isLength({ min: 5 }).run(Request);
         const postData = Request.body;
         const timezone = new Date().getTimezoneOffset().toString();
         const statu = 'Admin';
-        if (!postData.username || !postData.password) {
-            Response.json({msg: 'fill is empty'});
-        }
+        const errorFormatter = ({ location, msg, param, value, nestedErrors }) => {
+            return `${location}[${param}]: ${msg}`;
+          };
+        const result = validationResult(Request).formatWith(errorFormatter);
+        if (!result.isEmpty()) {
+            return Response.status(422).json({ errors: result.array() });
+          }
         var salt = await bcrypt.genSaltSync(10);
         const password = await bcrypt.hashSync(postData.password, salt);
+        // const sql = 'INSERT INTO users (username, password, status, timezone, role_id, stt) values (?, ?, ?, ?, ?, ?)';
         const sql = 'CALL weather_station.User_Add(?,?,?,?,?,?)';
         await conn.query(sql, [postData.username, password, statu, timezone, '1', '1'], (error, results, fields) => {
             if (error) {
@@ -67,6 +75,10 @@ module.exports = {
         } else {
             Response.status(404).send('Invalid request');
         }
+    },
+
+    api: async (Request, Response) => {
+        Response.json({msg: 'OK'})
     },
 
     secure: async (Request, Response) => {

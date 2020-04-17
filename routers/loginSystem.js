@@ -1,16 +1,19 @@
 module.exports = (app) => {
     const loginS = require('../controller/loginSystem');
-    const secure = require('../controller/checkToken');
+    const Secure = require('../controller/checkToken');
 
-    app.route('/signup')
+    app.route('/api')
+        .get(Secure,loginS.api);
+
+    app.route('/api/signup')
         .post(loginS.Signup);
 
-    app.route('/login')
+    app.route('/api/login')
         .post(loginS.Login);
 
-    app.route('/retoken')
+    app.route('/api/retoken')
         .post(loginS.Token);
-
+// ao wai check Aunt
     app.route('/secure')
-        .get(secure, loginS.secure);
+        .get(Secure, loginS.secure);
 }
