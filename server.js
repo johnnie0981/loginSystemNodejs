@@ -13,6 +13,7 @@ require('dotenv').config({
     path: './config/Config.env'
 })
 require('./routers/loginSystem')(app);
+require('./mqtt');
 app.listen(port, () => {
     console.log('Server run on port :', port);
 });
