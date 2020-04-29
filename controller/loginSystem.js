@@ -2,8 +2,8 @@ const conn = require('./dbConnection');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { check, validationResult } = require('express-validator');
-const tokenList = {};
 module.exports = {
+
     Signup: async (Request, Response) => {
         await check('username','fill in Empty').notEmpty().run(Request);
         await check('password','password must be at least 5 chars long').notEmpty().isLength({ min: 5 }).run(Request);
@@ -19,9 +19,9 @@ module.exports = {
           }
         var salt = await bcrypt.genSaltSync(10);
         const password = await bcrypt.hashSync(postData.password, salt);
-        // const sql = 'INSERT INTO users (username, password, status, timezone, role_id, stt) values (?, ?, ?, ?, ?, ?)';
-        const sql = 'CALL weather_station.User_Add(?,?,?,?,?,?)';
-        await conn.query(sql, [postData.username, password, statu, timezone, '1', '1'], (error, results, fields) => {
+        // const sql = 'INSERT INTO users (username, password, status, timezone, stt) values (?, ?, ?, ?, ?)';
+        const sql = 'CALL ws_nb.add_new_user(?,?,?,?,?)';
+        await conn.query(sql, [postData.username, password, statu, timezone, true,], (error, results, fields) => {
             if (error) {
                 return console.error(error.message);
             }
@@ -36,10 +36,10 @@ module.exports = {
             password: postData.password
         }
         var ret = [];
-        const sql = "CALL weather_station.user_se_nam(?)";
-        await conn.query(sql, user.username, async function (err, rows) {
-            if (err) throw err;
-            ret = JSON.stringify(rows[0]);
+        const sql = "CALL ws_nb.check_user(?)";
+        await conn.query(sql, user.username, async function (error, results) {
+            if (error) throw error;
+            ret = JSON.stringify(results[0]);
             const Upass = (JSON.parse(ret)[0]);
             if (Upass.STT === 'NOT EXISTS USER') {
                 return Response.json({msg: 'NOT EXISTS USER'})
@@ -51,30 +51,52 @@ module.exports = {
             if (isMatch) {
                 const token = jwt.sign({usn: user.username}, process.env.SECRET, { expiresIn: JSON.parse(process.env.tokenLife)});
                 const refreshToken = jwt.sign({usn: user.username}, process.env.refreshTokenSECRET, { expiresIn: JSON.parse(process.env.refreshTokenLife)});
-                const response = {
-                    "status": "Logged in",
-                    "token": token,
-                    "refreshToken": refreshToken,
-                }
-                tokenList[refreshToken] = response
-                Response.status(200).json(response);
+                const tkdate = new Date();
+                const sql1 = "CALL ws_nb.add_refresh_token(?,?,?)";
+                conn.query(sql1, [user.username, refreshToken, tkdate], (error, results) => {
+                    if (error) {
+                        return console.error(error.message);
+                    }
+                    const response = {
+                        "status": "Logged in",
+                        "token": token,
+                        "refreshToken": refreshToken,
+                        "results": results[0]
+                    }
+                    return Response.status(200).json(response);
+                })
             }
-
         });
     },
 
     Token: async (Request, Response) => {
         const postData = Request.body;
-        if ((postData.refreshToken) && (postData.refreshToken in tokenList)) {
-            const user = {"usn": postData.username};
-            const token = jwt.sign(user, process.env.SECRET, {expiresIn: JSON.parse(process.env.tokenLife)});
-            const response = {"token": token,};
-            // update the token in the list
-            tokenList[postData.refreshToken].token = token;
-            Response.status(200).json(response);
-        } else {
-            Response.status(404).send('Invalid request');
-        }
+        var ret = [];
+        const sql = "CALL ws_nb.selete_refresh_token(?)";
+        conn.query(sql, postData.username, (error, results) => {
+            if (error) {
+                return console.error(error.message);
+            }
+            ret = JSON.stringify(results[0]);
+            const token_re = (JSON.parse(ret)[0]);
+            if ((postData.refreshToken) === (token_re.login_token)) {
+                const user = {"usn": postData.username};
+                const token = jwt.sign(user, process.env.SECRET, {expiresIn: JSON.parse(process.env.tokenLife)});
+                // update the token in the list
+                const refreshToken = jwt.sign({user}, process.env.refreshTokenSECRET, { expiresIn: JSON.parse(process.env.refreshTokenLife)});
+                const tkdate = new Date();
+                const response = {"token": token, "refreshToken":refreshToken};
+                const sql1 = "CALL ws_nb.add_refresh_token(?,?,?)";
+                conn.query(sql1, [postData.username, refreshToken, tkdate], (error, results) => {
+                        if (error) {
+                            return console.error(error.message);
+                        }
+                        return Response.status(200).json(response);
+                    })
+                } else {
+                Response.status(404).send('Invalid request');
+                }
+        })
     },
 
     api: async (Request, Response) => {
